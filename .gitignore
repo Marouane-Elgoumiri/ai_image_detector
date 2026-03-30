@@ -45,14 +45,14 @@ venv.bak/
 *~
 
 # Project specific
-models/
+
+
 *.pkl
 *.joblib
 *.h5
 *.pt
 *.pth
 *.onnx
-data/
 *.npz
 *.npy
 *.csv

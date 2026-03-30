@@ -1,0 +1,15 @@
+{
+  "model": "mobilenet",
+  "variant": "small",
+  "epochs": 2,
+  "batch_size": 4,
+  "accumulation_steps": 8,
+  "effective_batch_size": 32,
+  "learning_rate": 0.0003,
+  "best_val_acc": 70.5,
+  "best_val_loss": 0.6737071561813355,
+  "final_train_acc": 59.8,
+  "final_val_acc": 70.5,
+  "roc_auc": 0.7482248224822482,
+  "timestamp": "2026-03-30T11:36:02.377606"
+}

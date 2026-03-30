@@ -30,7 +30,7 @@ from src.preprocessing.gradients import compute_gradients, gradient_magnitude, g
 from src.features.frequency import compute_fft, extract_frequency_features
 from src.features.texture import extract_texture_features
 from src.features.pca_features import extract_all_features
-from src.models.classifier import AIImageClassifier, CIFAKEClassifier, CNNClassifier
+from src.models.classifier import AIImageClassifier, CIFAKEClassifier, CNNClassifier, DeepLearningClassifier
 from src.utils.visualization import plot_comparison_grid
 
 
@@ -43,50 +43,60 @@ st.set_page_config(
 
 
 def get_default_model_path() -> str:
-    return str(Path(__file__).parent / 'models')
+    return str(Path(__file__).parent / 'models' / 'deep')
 
 
 @st.cache_resource
-def load_model(model_path: str, model_type: str = 'cnn') -> Optional[object]:
+def load_model(model_path: str, model_type: str = 'deep_learning') -> Optional[object]:
     """
     Load the trained classifier model.
-    
+
     Args:
-        model_path: Path to the model directory
-        model_type: Type of model to load ('cnn', 'svm', 'gradient_boosting', 'random_forest')
-    
+        model_path: Path to the model directory or checkpoint
+        model_type: Type of model to load ('deep_learning', 'cnn', 'svm', 'gradient_boosting', 'random_forest')
+
     Returns:
         Loaded classifier or None if not found
     """
     try:
         model_dir = Path(model_path)
-        
-        # Try loading CNN model first (best accuracy)
+
+        # Load deep learning model (best accuracy)
+        if model_type == 'deep_learning':
+            ckpt_path = model_dir / 'best_model.pt'
+            if ckpt_path.exists():
+                classifier = DeepLearningClassifier.load(
+                    str(ckpt_path),
+                    image_size=224,
+                )
+                return classifier
+
+        # Try loading CNN model (ResNet features + sklearn)
         if model_type == 'cnn':
             cnn_dir = model_dir / 'cnn' / 'gb'
             if cnn_dir.exists() and (cnn_dir / 'model.pkl').exists():
                 classifier = CNNClassifier.load(str(cnn_dir))
                 return classifier
-        
-        # Try loading CIFAKE models
+
+        # Try loading CIFAKE sklearn models
         if model_type in ['gradient_boosting', 'random_forest']:
             gb_dir = model_dir / model_type
             if gb_dir.exists() and (gb_dir / 'model.pkl').exists():
                 classifier = CIFAKEClassifier.load(str(gb_dir))
                 return classifier
-        
+
         # Fall back to old SVM model
         if (model_dir / 'svm_model.pkl').exists():
-            classifier = AIImageClassifier.load(model_path)
+            classifier = AIImageClassifier.load(str(model_dir))
             return classifier
-        
+
         # Try loading from subdirectory
         if model_type == 'svm':
             svm_dir = model_dir / 'svm'
             if svm_dir.exists() and (svm_dir / 'model.pkl').exists():
                 classifier = CIFAKEClassifier.load(str(svm_dir))
                 return classifier
-        
+
         return None
     except Exception as e:
         st.error(f"Error loading model: {e}")
@@ -179,18 +189,17 @@ def main():
     
     sidebar_info = """
     ### About This Tool
-    
-    **Detection Method:**
+
+    **Primary Model:**
+    Deep learning (EfficientNet-V2-S) trained on CIFAKE dataset
+    (~97% accuracy on 100K images, end-to-end CNN)
+
+    **Legacy Models (sklearn):**
     1. **Luminance Analysis**: Extracts Y channel from YCbCr
     2. **Gradient Field**: Computes Sobel gradients to detect edge patterns
     3. **FFT Analysis**: Identifies spectral artifacts from AI generation
     4. **Texture Features**: Analyzes kurtosis, entropy, and skewness
     5. **Ensemble Classification**: Gradient Boosting combines features for final prediction
-    
-    **Key Indicators:**
-    - AI images often have smoother gradient fields
-    - Diffusion models leave periodic patterns in FFT
-    - Real photos have natural statistical signatures
     """
     
     with st.sidebar:
@@ -204,9 +213,9 @@ def main():
         
         model_type = st.selectbox(
             "Model Type",
-            options=['cnn', 'gradient_boosting', 'random_forest', 'svm'],
+            options=['deep_learning', 'cnn', 'gradient_boosting', 'random_forest', 'svm'],
             index=0,
-            help="Select which trained model to use (CNN has best accuracy)"
+            help="Deep learning uses EfficientNet-V2-S (best accuracy). Others use sklearn."
         )
         
         if st.button("Reload Model"):
@@ -355,21 +364,20 @@ def main():
         
         st.markdown("""
         ---
-        
+
         ### How It Works
-        
-        This detector uses the following pipeline:
-        
-        1. **Preprocessing**: Convert RGB to YCbCr and extract luminance channel
-        2. **Gradient Analysis**: Compute Sobel gradients to capture edge information
-        3. **Frequency Analysis**: Apply 2D FFT to detect periodic AI artifacts
-        4. **Feature Extraction**: Calculate statistical texture features
-        5. **Dimensionality Reduction**: Use PCA to combine features
-        6. **Classification**: SVM with RBF kernel for final decision
-        
-        The classifier achieves ~85-95% accuracy on typical AI-generated images,
-        though performance may vary with new generation methods.
-        """)
+
+        **Deep Learning Model (primary):**
+        1. **Preprocessing**: Resize to 224x224, normalize with ImageNet stats
+        2. **Feature Extraction**: EfficientNet-V2-S learns features automatically
+        3. **Classification**: 2-class output (Real vs AI-generated)
+        4. **Confidence**: Softmax probability of AI-generated class
+
+        **Legacy sklearn models:**
+        1. Extract 41 handcrafted features (luminance, gradients, FFT, texture)
+        2. Scale + PCA dimensionality reduction
+        3. SVM/GradientBoosting/RandomForest classification
+        """
 
 
 if __name__ == '__main__':
