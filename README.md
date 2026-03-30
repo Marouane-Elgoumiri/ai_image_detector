@@ -1,31 +1,31 @@
 # AI-Generated Image Detector
 
-A machine learning system for detecting AI-generated images using deep learning and frequency domain analysis, with a Streamlit web interface.
+A deep learning system for detecting AI-generated images using the CIFAKE dataset, with a Streamlit web interface.
 
 ## Features
 
 - **CIFAKE Dataset**: Loads directly from HuggingFace (100K train + 20K test)
-- **Multiple Training Approaches**:
-  - Deep learning (EfficientNet, MobileNet, ConvNeXt)
-  - CNN feature extraction (ResNet50)
-  - Frequency domain analysis + SVM
-- **Fast training**: Feature extraction runs once, then trains lightweight classifiers
+- **Deep Learning Training**: End-to-end training with EfficientNet, MobileNet, ConvNeXt
+- **Google Colab Ready**: T4 GPU optimized with mixed precision and gradient accumulation
 - **Streamlit Web App**: Upload images and get instant AI/Real predictions
 
 ## Quick Start (Google Colab)
 
-The easiest way to train! Open the notebook:
+The easiest way to train:
 
 ```bash
-# Option 1: Open colab_quickstart.ipynb in Google Colab
-# Runtime → Change runtime type → GPU (optional)
-# Run all cells
+# 1. Open colab_quickstart.ipynb in Google Colab
+# 2. Runtime → Change runtime type → T4 GPU
+# 3. Run all cells
+```
 
-# Option 2: Command line
+Or command line:
+
+```bash
 git clone https://github.com/YOUR_USERNAME/AI_generated_images_detector.git
 cd AI_generated_images_detector/ai_image_detector
 pip install -r requirements.txt
-python train_cifake.py --max-train 10000
+python train_deep_cnn.py --model efficientnet --batch-size 16 --image-size 224 --epochs 30
 ```
 
 ## Installation (Local)
@@ -35,45 +35,48 @@ cd ai_image_detector
 pip install -r requirements.txt
 ```
 
-## Training Scripts
+## Training
 
-| Script | Description | Best For |
-|--------|-------------|----------|
-| `train_cifake.py` | CIFAKE from HuggingFace + feature extraction | Quick experiments |
-| `train_cnn.py` | ResNet50 features + sklearn classifiers | Balanced approach |
-| `train_deep_cnn.py` | Full deep learning training | Best accuracy |
-| `train_model.py` | Frequency analysis + SVM | Traditional approach |
+`train_deep_cnn.py` is the only training script. It does end-to-end deep learning on the CIFAKE dataset.
 
-### Train with CIFAKE (Recommended)
+### EfficientNet-V2-S (Recommended — best accuracy)
 
 ```bash
-python train_cifake.py --max-train 10000 --max-test 2000
+# Quick test (2 min)
+python train_deep_cnn.py --model efficientnet --batch-size 16 --max-train 5000 --max-val 1000 --epochs 2
+
+# Full training (~30-60 min on T4)
+python train_deep_cnn.py --model efficientnet --batch-size 16 --image-size 224 --epochs 30 --accumulation-steps 2
 ```
 
-### Train with Deep Learning
+### MobileNet-V3-Large (Faster, lower accuracy)
 
 ```bash
-# MobileNet (lighter, better for limited VRAM)
-python train_deep_cnn.py --model mobilenet --batch-size 16 --image-size 224
-
-# EfficientNet (higher accuracy, needs more memory)
-python train_deep_cnn.py --model efficientnet --batch-size 8 --image-size 224
+python train_deep_cnn.py --model mobilenet --variant large --batch-size 32 --image-size 224 --epochs 30
 ```
+
+### Model Options
+
+| Model | Params | VRAM (224px) | Accuracy | Speed |
+|-------|--------|-------------|----------|-------|
+| EfficientNet-V2-S | 20M | ~10GB (batch 16) | Best | Moderate |
+| MobileNet-V3-Large | 5.4M | ~4GB (batch 32) | Good | Fast |
+| ConvNeXt-Small | 50M | ~14GB (batch 16) | High | Slow |
 
 ## Project Structure
 
 ```
 ai_image_detector/
 ├── app.py                    # Streamlit web app
-├── train_cifake.py           # Main training script (CIFAKE)
-├── train_cnn.py              # ResNet feature extraction
-├── train_deep_cnn.py         # Deep learning training
-├── train_model.py            # Frequency analysis + SVM
+├── train_deep_cnn.py         # Deep learning training (GPU required)
+├── colab_quickstart.ipynb    # Colab notebook for training
 ├── requirements.txt          # Python dependencies
-├── .gitignore                # Git ignore rules
-├── models/                   # Saved model files
+├── models/                   # Saved model checkpoints
 └── src/
     ├── deep/                 # Deep learning modules
+    │   ├── models.py         # Model architectures
+    │   ├── data/             # Dataset & augmentation
+    │   └── training/         # Trainer, losses, schedulers
     ├── preprocessing/        # Luminance, gradients
     ├── features/             # Frequency, texture, PCA
     ├── models/               # Classifier, metrics
@@ -89,21 +92,8 @@ streamlit run app.py
 Or with a custom model:
 
 ```bash
-streamlit run app.py -- --model-path ./models/best_model.pkl
+streamlit run app.py -- --model-path ./models/deep/best_model.pt
 ```
-
-## Detection Methodology
-
-### Deep Learning Approach
-- Pre-trained CNN (ResNet50, EfficientNet, MobileNet)
-- Transfer learning with fine-tuning
-- Binary classification (Real vs AI-generated)
-
-### Frequency Analysis Approach
-- **Luminance**: Extract Y channel from YCbCr
-- **Gradient Analysis**: Sobel/Scharr operators
-- **FFT**: Detect periodic artifacts in spectral domain
-- **SVM**: RBF kernel classifier
 
 ## Dataset
 
@@ -111,13 +101,6 @@ streamlit run app.py -- --model-path ./models/best_model.pkl
 - 100,000 training images (50K real + 50K AI-generated)
 - 20,000 test images (10K real + 10K AI-generated)
 - Auto-downloaded via `datasets` library
-
-### Custom Dataset Format
-```
-dataset/
-├── real/           # Real images
-└── ai/             # AI-generated images
-```
 
 ## License
 

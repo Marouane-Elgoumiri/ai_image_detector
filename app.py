@@ -218,12 +218,12 @@ def main():
     if classifier is None:
         st.warning("""
         ⚠️ No trained model found. Please train the model first:
-        
+
         ```
         cd ai_image_detector
-        python train_cifake.py
+        python train_deep_cnn.py --model efficientnet --batch-size 16 --epochs 30
         ```
-        
+
         Or specify a different model path in the sidebar.
         """)
         
