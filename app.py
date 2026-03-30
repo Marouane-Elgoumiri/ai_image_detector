@@ -377,7 +377,7 @@ def main():
         1. Extract 41 handcrafted features (luminance, gradients, FFT, texture)
         2. Scale + PCA dimensionality reduction
         3. SVM/GradientBoosting/RandomForest classification
-        """
+        """)
 
 
 if __name__ == '__main__':
