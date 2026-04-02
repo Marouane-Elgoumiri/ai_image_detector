@@ -102,6 +102,13 @@ def parse_args():
 
     # Data arguments
     parser.add_argument(
+        '--dataset',
+        type=str,
+        default='cifake',
+        choices=['cifake', 'genbench'],
+        help='Dataset to use (cifake=balanced real/fake, genbench=30+ AI generators + CIFAKE reals)'
+    )
+    parser.add_argument(
         '--max-train',
         type=int,
         default=None,
@@ -322,6 +329,7 @@ def main():
     print("=" * 60)
     print("END-TO-END DEEP LEARNING TRAINING")
     print("=" * 60)
+    print(f"Dataset: {args.dataset}")
     print(f"Model: {args.model} ({args.variant})")
     print(f"Image size: {args.image_size}")
     print(f"Batch size: {args.batch_size}")
@@ -346,22 +354,37 @@ def main():
 
     # Create data loaders
     print("\n[1/5] Creating data loaders...")
-    from src.deep.data import create_dataloaders, get_transforms
+    from src.deep.data import get_transforms
 
     train_transform, val_transform = get_transforms(
         image_size=args.image_size,
         strong_augmentation=args.strong_augmentation,
     )
 
-    train_loader, val_loader = create_dataloaders(
-        batch_size=args.batch_size,
-        num_workers=args.num_workers,
-        max_train_samples=args.max_train,
-        max_val_samples=args.max_val,
-        train_transform=train_transform,
-        val_transform=val_transform,
-        seed=args.seed,
-    )
+    if args.dataset == 'genbench':
+        from src.deep.data import create_genbench_dataloaders
+        print("Using GenBench dataset (30+ AI generators + CIFAKE reals)")
+        train_loader, val_loader = create_genbench_dataloaders(
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            max_train_samples=args.max_train,
+            max_val_samples=args.max_val,
+            train_transform=train_transform,
+            val_transform=val_transform,
+            seed=args.seed,
+        )
+    else:
+        from src.deep.data import create_dataloaders
+        print("Using CIFAKE dataset")
+        train_loader, val_loader = create_dataloaders(
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            max_train_samples=args.max_train,
+            max_val_samples=args.max_val,
+            train_transform=train_transform,
+            val_transform=val_transform,
+            seed=args.seed,
+        )
 
     print(f"Train batches: {len(train_loader)}")
     print(f"Val batches: {len(val_loader)}")

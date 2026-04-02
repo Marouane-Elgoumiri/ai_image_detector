@@ -200,6 +200,10 @@ class Trainer:
         correct = 0
         total = 0
 
+        # Per-class tracking
+        class_correct = {0: 0, 1: 0}
+        class_total = {0: 0, 1: 0}
+
         self.optimizer.zero_grad()
 
         pbar = tqdm(self.train_loader, desc=f"Epoch {epoch+1} [Train]")
@@ -238,11 +242,28 @@ class Trainer:
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
 
-            # Update progress bar
+            # Per-class tracking
+            for label, pred in zip(labels.cpu().numpy(), predicted.cpu().numpy()):
+                label_int = int(label)
+                class_total[label_int] = class_total.get(label_int, 0) + 1
+                if int(label) == int(pred):
+                    class_correct[label_int] = class_correct.get(label_int, 0) + 1
+
+            # Update progress bar with per-class accuracy
+            real_acc = 100.0 * class_correct.get(0, 0) / max(class_total.get(0, 1), 1)
+            fake_acc = 100.0 * class_correct.get(1, 0) / max(class_total.get(1, 1), 1)
             pbar.set_postfix({
                 'loss': total_loss / (batch_idx + 1),
                 'acc': 100.0 * correct / total,
+                'R': f"{real_acc:.0f}%",
+                'F': f"{fake_acc:.0f}%",
             })
+
+        # Print per-class summary and warn if model collapsed
+        real_acc = 100.0 * class_correct.get(0, 0) / max(class_total.get(0, 1), 1)
+        fake_acc = 100.0 * class_correct.get(1, 0) / max(class_total.get(1, 1), 1)
+        if real_acc < 10 or fake_acc < 10:
+            print(f"  WARNING: Model may have collapsed! Real acc: {real_acc:.1f}%, Fake acc: {fake_acc:.1f}%")
 
         return total_loss / len(self.train_loader), 100.0 * correct / total
 
@@ -253,6 +274,10 @@ class Trainer:
         total_loss = 0.0
         correct = 0
         total = 0
+
+        # Per-class tracking
+        class_correct = {0: 0, 1: 0}
+        class_total = {0: 0, 1: 0}
 
         pbar = tqdm(self.val_loader, desc=f"Epoch {epoch+1} [Val]")
 
@@ -273,10 +298,25 @@ class Trainer:
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
 
+            # Per-class tracking
+            for label, pred in zip(labels.cpu().numpy(), predicted.cpu().numpy()):
+                label_int = int(label)
+                class_total[label_int] = class_total.get(label_int, 0) + 1
+                if int(label) == int(pred):
+                    class_correct[label_int] = class_correct.get(label_int, 0) + 1
+
+            real_acc = 100.0 * class_correct.get(0, 0) / max(class_total.get(0, 1), 1)
+            fake_acc = 100.0 * class_correct.get(1, 0) / max(class_total.get(1, 1), 1)
             pbar.set_postfix({
                 'loss': total_loss / (len(pbar) + 1),
                 'acc': 100.0 * correct / total,
+                'R': f"{real_acc:.0f}%",
+                'F': f"{fake_acc:.0f}%",
             })
+
+        # Print per-class val summary
+        real_acc = 100.0 * class_correct.get(0, 0) / max(class_total.get(0, 1), 1)
+        fake_acc = 100.0 * class_correct.get(1, 0) / max(class_total.get(1, 1), 1)
 
         return total_loss / len(self.val_loader), 100.0 * correct / total
 
