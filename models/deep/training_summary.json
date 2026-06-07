@@ -1,0 +1,15 @@
+{
+  "model": "efficientnet",
+  "variant": "small",
+  "epochs": 30,
+  "batch_size": 64,
+  "accumulation_steps": 1,
+  "effective_batch_size": 64,
+  "learning_rate": 0.0003,
+  "best_val_acc": 98.97,
+  "best_val_loss": 0.3389214324875,
+  "final_train_acc": 99.90697023047375,
+  "final_val_acc": 98.905,
+  "roc_auc": 0.9973671599999999,
+  "timestamp": "2026-04-05T14:47:35.184879"
+}
